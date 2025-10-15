@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "src/proofly_backend"
+]
+resolver = "2"
