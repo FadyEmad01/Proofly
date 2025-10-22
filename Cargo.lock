@@ -21,6 +21,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "backend"
+version = "0.1.0"
+dependencies = [
+ "candid",
+ "ic-cdk",
+ "ic-cdk-macros",
+ "ic-cdk-timers",
+ "ic-stable-structures",
+ "serde",
+]
+
+[[package]]
 name = "binread"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -319,6 +331,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-stable-structures"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ee3372ddc0cf2a747fc26ce2d075a240ed6bfab151e63bc70109e8967f7ce6f"
+dependencies = [
+ "ic_principal",
+]
+
+[[package]]
 name = "ic0"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -426,15 +447,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "89ae43fd86e4158d6db51ad8e2b80f313af9cc74f5c0e03ccb87de09998732de"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "proofly_backend"
-version = "0.1.0"
-dependencies = [
- "candid",
- "ic-cdk",
- "ic-cdk-timers",
 ]
 
 [[package]]

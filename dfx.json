@@ -3,7 +3,11 @@
     "backend": {
       "candid": "backend/backend.did",
       "package": "backend",
-      "type": "rust"
+      "type": "rust",
+      "declarations": {
+        "output": "backend/backend.did",
+        "bindings": ["js", "ts", "did"]
+      }
     }
   },
   "defaults": {

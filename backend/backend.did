@@ -1,3 +1,5 @@
 service : {
-    "greet": (text) -> (text) query;
+  generate_proof : (nat64) -> (text);
+  list_my_companies : () -> (vec text) query;
+  verify_proof : (text) -> (bool) query;
 }
