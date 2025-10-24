@@ -21,7 +21,7 @@ export default function BorderLayout({
         id={id}
         style={{ ...style }}
         className={cn(
-          "border-x-gray border-x relative p-3 max-w-7xl mx-auto",
+          "border-x-gray border-x relative max-w-7xl p-4 sm:p-6 mx-auto",
           className
         )}
       >

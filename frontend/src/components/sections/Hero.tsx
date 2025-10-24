@@ -5,11 +5,14 @@ import BorderLayout from "../layout/borderLayout";
 import { Button } from "../ui/button";
 import { LoadingSwap } from "../ui/loading-swap";
 import Link from "next/link";
+import CrossSVG from "../svg/CrossSVG";
 
 export default function Hero() {
     return (
-        <BorderLayout id="hero">
-            <div className="card-shadow px-2 lg:p-20 lg:pb-10 mt-[84px] grid max-lg:grid-rows-[auto_1fr] gap-4 lg:grid-cols-2 lg:gap-10 bg-white rounded-xl border border-gray font-matter overflow-hidden relative pb-2">
+        <BorderLayout id="hero" className="mt-3 border-t">
+            <CrossSVG className="absolute -left-3 -top-3 " />
+            <CrossSVG className="absolute -right-3 -top-3" />
+            <div className="card-shadow px-2 lg:p-20 lg:pb-10 grid max-lg:grid-rows-[auto_1fr] gap-4 lg:grid-cols-2 lg:gap-10 bg-white rounded-xl border border-gray font-matter overflow-hidden relative pb-2">
                 <motion.div
                     initial={{ opacity: 0, y: "30px" }}
                     animate={{ opacity: 1, y: "0px" }}
@@ -43,35 +46,23 @@ export default function Hero() {
                                     <Link href="/">Verify Proof Code</Link>
                                 </LoadingSwap>
                             </Button>
+                            {/* <Button asChild
+                                className="w-full bg-[#F7F7F8] border border-[#F3F3F4] text-primary"
+                                variant="default"
+                            >
+                                <LoadingSwap isLoading={false}>
+                                    <Link href="/">Verify Proof Code</Link>
+                                </LoadingSwap>
+                            </Button> */}
                         </div>
-                        {/* <p className="text-center text-gray-700 text-[14px]">
-                            No credit card required
-                        </p> */}
                     </div>
                 </motion.div>
                 <div className="relative z-30">
-                    {/* <HeroClient /> */}
-                    asd
                     <div className="hidden lg:flex items-center flex-nowrap gap-12 mt-8 mx-2">
                         <Image fill className="rounded-2xl" src="/images/placeholder.jpeg"
                             alt="placeholder" />
-                        {/* {imgProps.map(({ src, width, height, alt }) => (
-                            <Image
-                                unoptimized
-                                key={alt}
-                                src={src}
-                                alt={alt}
-                                width={width}
-                                height={height}
-                                style={{
-                                    width,
-                                    height,
-                                }}
-                            />
-                        ))} */}
                     </div>
                 </div>
-                {/* <HeroBackground /> */}
             </div>
         </BorderLayout>
     );
