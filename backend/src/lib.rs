@@ -88,12 +88,12 @@ impl Storable for Proof {
 
 impl Storable for StorableString {
     fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::Owned(Encode!(&self.str).unwrap())
+        Cow::Owned(Encode!(&self.value).unwrap())
     }
 
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
         Self{
-            str: Decode!(bytes.as_ref(), String).unwrap(),
+            value: Decode!(bytes.as_ref(), String).unwrap(),
         }
     }
 }
