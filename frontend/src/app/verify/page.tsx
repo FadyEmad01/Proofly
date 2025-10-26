@@ -9,12 +9,15 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import z from 'zod'
 import { Button } from '@/components/ui/button'
 import { LoadingSwap } from '@/components/ui/loading-swap'
-import { BadgeCheck, CheckIcon, Clock, CopyIcon, ShieldCheck } from 'lucide-react'
+import { BadgeCheck, CheckIcon, CircleX, Clock, CopyIcon, ShieldCheck } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { toastManager } from '@/components/ui/toast'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 
 
 const proofCodeSchema = z.object({
@@ -23,10 +26,7 @@ const proofCodeSchema = z.object({
 type proofCodeFormData = z.infer<typeof proofCodeSchema>
 
 export default function page() {
-    const [isTrue, setIsTrue] = useState(false)
-    const [copied, setCopied] = useState(false)
-    const inputRef = useRef<HTMLInputElement>(null)
-    const id = "verifiedCode"
+    const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
 
     const form = useForm<proofCodeFormData>({
         resolver: zodResolver(proofCodeSchema),
@@ -37,27 +37,16 @@ export default function page() {
     })
     const { isSubmitting } = form.formState
 
-    const handleCopy = () => {
-        if (inputRef.current) {
-            navigator.clipboard.writeText(inputRef.current.value)
-            setCopied(true)
-            setTimeout(() => setCopied(false), 1500)
-        }
-    }
-
     const onSubmit = async (data: proofCodeFormData) => {
-        let id: string | undefined;
-
+        let id: string | undefined
         try {
             id = toastManager.add({
                 title: "Verifying proof code...",
                 type: "loading",
-            });
+            })
 
-            // simulate backend verification delay
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-
-            toastManager.close(id);
+            await new Promise((resolve) => setTimeout(resolve, 2000)) // simulate delay
+            toastManager.close(id)
 
             if (data.proofCode === "123456") {
                 toastManager.add({
@@ -65,27 +54,27 @@ export default function page() {
                     description: `Proof code "${data.proofCode}" is valid.`,
                     type: "success",
                     timeout: 2000,
-                });
-                setIsTrue(true)
+                })
+                setStatus("success")
             } else {
                 toastManager.add({
                     title: "Invalid proof code",
                     description: "The proof code you entered is incorrect.",
                     type: "error",
                     timeout: 3000,
-                });
+                })
+                setStatus("error")
             }
         } catch (err: any) {
-            if (id) toastManager.close(id);
-
+            if (id) toastManager.close(id)
             toastManager.add({
                 title: "Verification failed",
                 description: err.message || "Something went wrong while verifying the code.",
                 type: "error",
                 timeout: 3000,
-            });
+            })
         }
-    };
+    }
 
 
     return (
@@ -148,58 +137,61 @@ export default function page() {
                                                     <LoadingSwap isLoading={isSubmitting}>Verify Proof Code</LoadingSwap>
                                                 </Button>
                                             </Field>
-                                            {isTrue && (
-                                                <div className="*:not-first:mt-2">
-                                                    <Label htmlFor={id}>Copy to clipboard</Label>
-                                                    <div className="relative">
-                                                        <Input
-                                                            ref={inputRef}
-                                                            id={id}
-                                                            className="pe-9"
-                                                            type="text"
-                                                            defaultValue="pnpm install origin-ui"
-                                                            readOnly
-                                                        />
-                                                        <TooltipProvider delayDuration={0}>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <button
-                                                                        onClick={handleCopy}
-                                                                        className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center rounded-e-md text-muted-foreground/80 transition-[color,box-shadow] outline-none hover:text-foreground focus:z-10 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed"
-                                                                        aria-label={copied ? "Copied" : "Copy to clipboard"}
-                                                                        disabled={copied}
-                                                                    >
-                                                                        <div
-                                                                            className={cn(
-                                                                                "transition-all",
-                                                                                copied ? "scale-100 opacity-100" : "scale-0 opacity-0"
-                                                                            )}
-                                                                        >
-                                                                            <CheckIcon
-                                                                                className="stroke-emerald-500"
-                                                                                size={16}
-                                                                                aria-hidden="true"
-                                                                            />
-                                                                        </div>
-                                                                        <div
-                                                                            className={cn(
-                                                                                "absolute transition-all",
-                                                                                copied ? "scale-0 opacity-0" : "scale-100 opacity-100"
-                                                                            )}
-                                                                        >
-                                                                            <CopyIcon size={16} aria-hidden="true" />
-                                                                        </div>
-                                                                    </button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent className="px-2 py-1 text-xs">
-                                                                    Copy to clipboard
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    </div>
-                                                </div>
-                                            )
-                                            }
+                                            {status === "success" && (
+
+                                                <Card className='w-full bg-[#F4F4F4] rounded-md shadow border border-gray relative '>
+                                                    <span className="absolute size-1.5 bg-[#C8D4DD] rounded-full left-[7px] top-[7px]" />
+                                                    <span className="absolute size-1.5 bg-[#C8D4DD] rounded-full right-[7px] top-[7px]" />
+                                                    <span className="absolute size-1.5 bg-[#C8D4DD] rounded-full left-[7px] bottom-[7px]" />
+                                                    <span className="absolute size-1.5 bg-[#C8D4DD] rounded-full right-[7px] bottom-[7px]" />
+
+                                                    <CardContent>
+                                                        <div className='flex items-center justify-between flex-wrap gap-3'>
+                                                            {/* user */}
+                                                            <div className="flex items-center gap-3 flex-wrap">
+                                                                <Avatar className='size-10 shrink-0'>
+                                                                    {/* <AvatarImage src="https://github.com/shadcn.png" /> */}
+                                                                    <AvatarFallback>JD</AvatarFallback>
+                                                                </Avatar>
+                                                                <div>
+                                                                    <h6 className="text-lg font-semibold text-gray-900 font-matter leading-none">John Doe</h6>
+                                                                    <p className="text-sm text-gray-600 leading-none">Software Engineer</p>
+                                                                </div>
+                                                            </div>
+                                                            {/* company */}
+                                                            <div className='flex items-center flex-wrap gap-1'>
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                >
+                                                                    Google
+                                                                </Badge>
+                                                            </div>
+                                                        </div>
+
+                                                    </CardContent>
+                                                </Card>
+
+                                            )}
+                                            {status === "error" && (
+
+                                                <Card className='w-full bg-[#F4F4F4] rounded-md shadow border border-gray relative '>
+                                                    <span className="absolute size-1.5 bg-[#C8D4DD] rounded-full left-[7px] top-[7px]" />
+                                                    <span className="absolute size-1.5 bg-[#C8D4DD] rounded-full right-[7px] top-[7px]" />
+                                                    <span className="absolute size-1.5 bg-[#C8D4DD] rounded-full left-[7px] bottom-[7px]" />
+                                                    <span className="absolute size-1.5 bg-[#C8D4DD] rounded-full right-[7px] bottom-[7px]" />
+
+                                                    <CardContent>
+                                                        <Empty className='p-1 gap-0'>
+                                                            <EmptyHeader>
+                                                                <EmptyMedia className='mb-1' variant="icon">
+                                                                    <CircleX className='text-destructive' />
+                                                                </EmptyMedia>
+                                                                <EmptyTitle className='text-lg text-gray-900 font-matter leading-none'>User not found</EmptyTitle>
+                                                            </EmptyHeader>
+                                                        </Empty>
+                                                    </CardContent>
+                                                </Card>
+                                            )}
                                         </FieldGroup>
                                     </div>
                                 </form>
@@ -207,24 +199,6 @@ export default function page() {
                         </Card>
 
                         <Card className="w-full max-w-xl shadow-md text-start">
-                            {/* <CardHeader className='text-start'>
-                                <CardTitle>How Verification Works</CardTitle>
-                            </CardHeader> */}
-                            {/* <CardContent>
-                                <h5>How Verification Works</h5>
-                                <div className="flex items-start flex-wrap">
-                                    <ShieldCheck className='size-4 text-[#6b7280]' />
-                                    <p>Proof codes are generated by verified employees and stored securely on the Internet Computer blockchain.</p>
-                                </div>
-                                <div className="flex items-start flex-wrap">
-                                    <Clock className='size-4 text-[#6b7280]' />
-                                    <p>Each proof code is valid for 1 hour from lore the time of generation.</p>
-                                </div>
-                                <div className="flex items-start flex-wrap">
-                                    <BadgeCheck className='size-4 text-[#6b7280]' />
-                                    <p>Verification is instant and does not require authentication.</p>
-                                </div>
-                            </CardContent> */}
                             <CardContent className="space-y-4">
                                 <h5 className="text-lg font-semibold text-gray-900">
                                     How Verification Works
