@@ -160,7 +160,7 @@ export default function page() {
 
 
     return (
-        <BorderLayout id='verify-page' className='mt-3 border-t'>
+        <BorderLayout id='generate-proof' className='mt-3 border-t'>
             <CrossSVG className="absolute -left-3 -top-3 " />
             <CrossSVG className="absolute -right-3 -top-3" />
 
@@ -236,7 +236,7 @@ export default function page() {
                                                                                     onSelect={(currentValue) => {
                                                                                         setValue(currentValue)
                                                                                         setOpen(false)
-                                                                                        form.setValue("generateProofCode", currentValue) // 👈 هنا المفتاح!
+                                                                                        form.setValue("generateProofCode", currentValue)
                                                                                       }}
                                                                                 >
                                                                                     {framework.label}
