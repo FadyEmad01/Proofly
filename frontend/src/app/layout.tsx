@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import "../styles/globals.css";
-import { ThemeProvider } from "@/providers/theme-provider";
 import { calSemibold, geistMono, geistSans, inter, matter, robotoMono } from "../../public/fonts";
 import { ToastProvider } from "@/components/ui/toast";
+import Footer from "@/components/sections/Footer";
 
 
 
@@ -19,18 +19,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${calSemibold.variable} ${matter.variable} ${inter.variable} ${robotoMono.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${calSemibold.variable} ${matter.variable} ${inter.variable} ${robotoMono.variable} ${geistSans.variable} ${geistMono.variable} antialiased light`}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          // enableSystem
-          disableTransitionOnChange
-        >
-          <ToastProvider>
-            {children}
-          </ToastProvider>
-        </ThemeProvider>
+        {/* don't use dark mode this website is light only if u want dark u will edit alot, sorry! */}
+        <ToastProvider>
+          {children}
+          <Footer />
+        </ToastProvider>
       </body>
     </html>
   );
