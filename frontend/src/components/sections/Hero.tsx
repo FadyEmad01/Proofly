@@ -6,8 +6,10 @@ import { Button } from "../ui/button";
 import { LoadingSwap } from "../ui/loading-swap";
 import Link from "next/link";
 import CrossSVG from "../svg/CrossSVG";
+import { useRouter } from "next/navigation";
 
 export default function Hero() {
+    const router = useRouter();
     return (
         <BorderLayout id="hero" className="mt-3 border-t">
             <CrossSVG className="absolute -left-3 -top-3 " />
@@ -30,12 +32,12 @@ export default function Hero() {
                     </p>
                     <div className="w-[90%] space-y-4 md:max-w-[600px] max-w-[400px] lg:max-w-[400px] max-lg:mx-auto max-lg:px-2">
                         <div className="flex gap-4 md:flex-row flex-col lg:flex-col">
-                            <Button asChild
-                                // className="w-full bg-blue-500 border border-blue-500 hover:bg-blue-500/90"
+                            <Button
                                 className="w-full"
+                                onClick={() => router.push("/dashboard")}
                             >
                                 <LoadingSwap isLoading={false}>
-                                    <Link href="/">Login with internet identity</Link>
+                                    <span>Login with internet identity</span>
                                 </LoadingSwap>
                             </Button>
                             <Button asChild
@@ -46,14 +48,6 @@ export default function Hero() {
                                     <Link href="/verify">Verify Proof Code</Link>
                                 </LoadingSwap>
                             </Button>
-                            {/* <Button asChild
-                                className="w-full bg-[#F7F7F8] border border-[#F3F3F4] text-primary"
-                                variant="default"
-                            >
-                                <LoadingSwap isLoading={false}>
-                                    <Link href="/">Verify Proof Code</Link>
-                                </LoadingSwap>
-                            </Button> */}
                         </div>
                     </div>
                 </motion.div>
