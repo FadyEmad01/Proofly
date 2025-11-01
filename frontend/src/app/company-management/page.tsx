@@ -115,6 +115,7 @@ export default function page() {
     // Skeleton while mounting to avoid hydration mismatch
     if (!mounted) {
         return (
+            
             <BorderLayout id="verify-page" className="mt-3 border-t">
                 <CrossSVG className="absolute -left-3 -top-3 " />
                 <CrossSVG className="absolute -right-3 -top-3" />
