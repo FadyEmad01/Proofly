@@ -195,14 +195,13 @@ fn is_works_on(user_id: &String, company_id: &String) -> bool {
 }
 
 #[ic_cdk::update]
-async fn generate_proof(company_id:String) -> Option<String> {
+async fn generate_proof(company_id:String) -> Result<String, &'static str> {
     let caller_principal = ic_cdk::caller();
     let user_id: String = caller_principal.to_text();
 
     //cheack if user_id works in company_id or not
     if !is_works_on(&user_id,&company_id) {
-        ic_cdk::println!("Caller is not works in this company.");
-        return None;
+        return Err("Caller is not works in this company");
     }
 
     let random_code = generate_random_code(PROOF_LENTGH as usize).await;
@@ -233,7 +232,7 @@ async fn generate_proof(company_id:String) -> Option<String> {
     PROOF_MAP.with(|p|{
         p.borrow_mut().insert(proof_id, cur_proof.clone());
     });
-    Some(proof_code)
+    Ok(proof_code)
 }
 
 #[ic_cdk::query]
@@ -295,20 +294,38 @@ fn add_employee(comp_id:String,emp_id:String)->bool{
         return false;
     }
 
+    // Add employee to COMPANY_EMPLOYEES (company -> employees)
     COMPANY_EMPLOYEES.with(|comp|{
         let mut map=comp.borrow_mut();
         let comp_key = StorableString { value: comp_id.clone() };
        
         if let Some(mut emp_list) = map.get(&comp_key) {
             if !emp_list.ids.contains(&emp_id) {
-                emp_list.ids.push(emp_id);
+                emp_list.ids.push(emp_id.clone());
                 map.insert(comp_key, emp_list);
             }
         } else {
-            let new_list = IDList { ids: vec![emp_id] };
+            let new_list = IDList { ids: vec![emp_id.clone()] };
             map.insert(comp_key, new_list);
         }
     });
+
+    // Add company to EMPLOYEE_COMPANIES (employee -> companies)
+    EMPLOYEE_COMPANIES.with(|emp|{
+        let mut map=emp.borrow_mut();
+        let emp_key = StorableString { value: emp_id.clone() };
+       
+        if let Some(mut comp_list) = map.get(&emp_key) {
+            if !comp_list.ids.contains(&comp_id) {
+                comp_list.ids.push(comp_id.clone());
+                map.insert(emp_key, comp_list);
+            }
+        } else {
+            let new_list = IDList { ids: vec![comp_id.clone()] };
+            map.insert(emp_key, new_list);
+        }
+    });
+
     true
 }
 
@@ -320,7 +337,8 @@ fn remove_employee(comp_id:String,emp_id:String,)->bool{
         return false;
     }
 
-    COMPANY_EMPLOYEES.with(|comp|{
+    // Remove employee from COMPANY_EMPLOYEES (company -> employees)
+    let removed_from_company = COMPANY_EMPLOYEES.with(|comp|{
         let mut map=comp.borrow_mut();
         let comp_key = StorableString { value: comp_id.clone() };
        
@@ -338,6 +356,24 @@ fn remove_employee(comp_id:String,emp_id:String,)->bool{
             return false;
         }
     });
+
+    if !removed_from_company {
+        return false;
+    }
+
+    // Remove company from EMPLOYEE_COMPANIES (employee -> companies)
+    EMPLOYEE_COMPANIES.with(|emp|{
+        let mut map=emp.borrow_mut();
+        let emp_key = StorableString { value: emp_id.clone() };
+       
+        if let Some(mut comp_list) = map.get(&emp_key) {
+            if let Some(pos) = comp_list.ids.iter().position(|id| id == &comp_id) {
+                comp_list.ids.remove(pos);
+                map.insert(emp_key, comp_list);
+            }
+        }
+    });
+
     true
 }
 
@@ -390,11 +426,11 @@ fn verify_proof(proof_code: String) -> Result<Proof, &'static str> {
 #[ic_cdk::update]
 fn add_new_companey(comp_username:String, comp_name:String)->Result<(), &'static str>{
     
-    let storable_comp_name=StorableString{value:comp_name.clone()};
+    let storable_comp_username=StorableString{value:comp_username.clone()};
     // check the username
     let exists = COMPANY_MAP.with(|mp| {
         let map = mp.borrow();
-        map.contains_key(&storable_comp_name)
+        map.contains_key(&storable_comp_username)
     });
     if exists {
         return Err("username is alrady exist");
@@ -416,7 +452,7 @@ fn add_new_companey(comp_username:String, comp_name:String)->Result<(), &'static
 
     // insert company in COMPANY_MAP
     COMPANY_MAP.with(|mp| {
-        mp.borrow_mut().insert(storable_comp_name.clone(), comp);
+        mp.borrow_mut().insert(storable_comp_username.clone(), comp);
     });
 
     let storable_admin = StorableString{value:admin};
@@ -427,12 +463,12 @@ fn add_new_companey(comp_username:String, comp_name:String)->Result<(), &'static
 
         if let Some(mut id_list) = map.get(&storable_admin) {
             //admin already if exists -> append new company
-            id_list.ids.push(comp_name.clone());
+            id_list.ids.push(comp_username.clone());
             map.insert(storable_admin, id_list);
         } else {
             // admin not found -> create new entry
             let new_list = IDList {
-                ids: vec![comp_name.clone()],
+                ids: vec![comp_username.clone()],
             };
             map.insert(storable_admin, new_list);
         }
