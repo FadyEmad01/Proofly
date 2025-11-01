@@ -17,5 +17,5 @@ service : {
   list_my_admin_companies : () -> (vec text) query;
   list_my_companies : () -> (vec text) query;
   remove_employee : (text, text) -> (bool);
-  verify_proof : (text) -> (Result_2) query;
+  verify_proof : (text) -> (Result_2);
 }

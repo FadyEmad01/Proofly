@@ -377,7 +377,7 @@ fn remove_employee(comp_id:String,emp_id:String,)->bool{
     true
 }
 
-#[ic_cdk::query]
+#[ic_cdk::update]
 fn verify_proof(proof_code: String) -> Result<Proof, &'static str> {
 
     // get the secound part of proof (ID)
@@ -386,11 +386,6 @@ fn verify_proof(proof_code: String) -> Result<Proof, &'static str> {
         .ok_or("Proof code too short")?
         .parse()
         .map_err(|_| "Invalid proof ID")?;
-
-    let proof_prefix = proof_code
-    .get(0..PROOF_LENTGH as usize)
-    .ok_or("Proof code too short")?
-    .to_string();
 
     PROOF_MAP.with(|mp|{
         let mut map=mp.borrow_mut();
@@ -408,7 +403,7 @@ fn verify_proof(proof_code: String) -> Result<Proof, &'static str> {
 
         // get the hash of the proof
         let mut hasher = Sha256::new();
-        hasher.update(proof_prefix.as_bytes());
+        hasher.update(proof_code.as_bytes());
         let result = hasher.finalize();
         let hashed_code = hex::encode(result);
 
