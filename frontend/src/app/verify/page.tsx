@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { useICPActor } from '@/hooks/useICPActor'
-import type { Proof, Result } from '@/types/backend'
+import type { ProofResult, Result } from '@/types/backend'
 
 const proofCodeSchema = z.object({
     proofCode: z.string().min(1, "Proof code is required"),
@@ -28,7 +28,7 @@ type proofCodeFormData = z.infer<typeof proofCodeSchema>
 
 export default function page() {
     const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
-    const [proofData, setProofData] = useState<Proof | null>(null)
+    const [proofData, setProofData] = useState<ProofResult | null>(null)
     
     // Initialize ICP Actor using custom hook
     const { actor, loading: connecting, error: connectionError } = useICPActor()
@@ -62,7 +62,7 @@ export default function page() {
             })
 
             // Call backend verify_proof function
-            const result: Result<Proof> = await actor.verify_proof(data.proofCode)
+            const result: Result<ProofResult> = await actor.verify_proof(data.proofCode)
             
             toastManager.close(id)
 
@@ -208,11 +208,11 @@ export default function page() {
                                                             {/* user */}
                                                             <div className="flex items-center gap-3 flex-wrap">
                                                                 <Avatar className='size-10 shrink-0'>
-                                                                    <AvatarFallback>{proofData.employee_id.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                                                    <AvatarFallback>{proofData.employee_name.substring(0, 2).toUpperCase()}</AvatarFallback>
                                                                 </Avatar>
                                                                 <div>
-                                                                    <h6 className="text-lg font-semibold text-gray-900 font-matter leading-none">Employee ID</h6>
-                                                                    <p className="text-sm text-gray-600 leading-none break-all">{proofData.employee_id}</p>
+                                                                    <h6 className="text-lg font-semibold text-gray-900 font-matter leading-none">{proofData.employee_name}</h6>
+                                                                    <p className="text-sm text-gray-600 leading-none">{proofData.position}</p>
                                                                 </div>
                                                             </div>
                                                             {/* company */}
@@ -220,9 +220,12 @@ export default function page() {
                                                                 <Badge
                                                                     variant="secondary"
                                                                 >
-                                                                    {proofData.company_id}
+                                                                    {proofData.company_name}
                                                                 </Badge>
                                                             </div>
+                                                        </div>
+                                                        <div className="mt-4 text-sm text-gray-600">
+                                                            <p>Created: {new Date(Number(proofData.created_at / BigInt(1_000_000))).toLocaleString()}</p>
                                                         </div>
 
                                                     </CardContent>

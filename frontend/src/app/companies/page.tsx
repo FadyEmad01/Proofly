@@ -387,13 +387,13 @@ function CompanyPageContent() {
             setLoadingEmployees(true);
             try {
                 // Get employees from backend
-                const employeeIds = await actor.list_company_employess(companyUsername) as string[];
+                const employeesData = await actor.list_company_employess(companyUsername);
                 
                 // Convert to Employee objects
-                const employees: Employee[] = employeeIds.map(id => ({
-                    id: id,
-                    name: id,  // Using principal ID as name
-                    position: "N/A"  // Position not available from backend yet
+                const employees: Employee[] = employeesData.map((emp: any) => ({
+                    id: emp.employee_id,
+                    name: emp.employee_id,  // Using principal ID as name
+                    position: emp.position
                 }));
                 
                 // Create company object
@@ -480,6 +480,10 @@ function CompanyPageContent() {
             alert("Please enter employee Principal ID");
             return;
         }
+        if (!empForm.position.trim()) {
+            alert("Please enter employee Position");
+            return;
+        }
 
         if (isEditing && editingEmpId) {
             // TODO: Edit functionality (not implemented in backend yet)
@@ -499,17 +503,17 @@ function CompanyPageContent() {
 
             setSaving(true);
             try {
-                const result = await actor.add_employee(companyUsername, empForm.principalId.trim());
+                const result = await actor.add_employee(companyUsername, empForm.principalId.trim(), empForm.position.trim());
                 
                 if (result === true) {
                     alert("Employee added successfully!");
                     
                     // Reload employees from backend
-                    const employeeIds = await actor.list_company_employess(companyUsername) as string[];
-                    const employees: Employee[] = employeeIds.map(id => ({
-                        id: id,
-                        name: id,
-                        position: "N/A"
+                    const employeesData = await actor.list_company_employess(companyUsername);
+                    const employees: Employee[] = employeesData.map((emp: any) => ({
+                        id: emp.employee_id,
+                        name: emp.employee_id,
+                        position: emp.position
                     }));
                     
                     const updatedCompany: Company = {
@@ -548,11 +552,11 @@ function CompanyPageContent() {
             
             if (result === true) {
                 // Reload employees from backend
-                const employeeIds = await actor.list_company_employess(companyUsername) as string[];
-                const employees: Employee[] = employeeIds.map(empId => ({
-                    id: empId,
-                    name: empId,
-                    position: "N/A"
+                const employeesData = await actor.list_company_employess(companyUsername);
+                const employees: Employee[] = employeesData.map((emp: any) => ({
+                    id: emp.employee_id,
+                    name: emp.employee_id,
+                    position: emp.position
                 }));
                 
                 const updatedCompany: Company = {
@@ -594,11 +598,11 @@ function CompanyPageContent() {
             
             if (successCount > 0) {
                 // Reload employees from backend
-                const employeeIds = await actor.list_company_employess(companyUsername) as string[];
-                const employees: Employee[] = employeeIds.map(empId => ({
-                    id: empId,
-                    name: empId,
-                    position: "N/A"
+                const employeesData = await actor.list_company_employess(companyUsername);
+                const employees: Employee[] = employeesData.map((emp: any) => ({
+                    id: emp.employee_id,
+                    name: emp.employee_id,
+                    position: emp.position
                 }));
                 
                 const updatedCompany: Company = {
@@ -710,14 +714,16 @@ function CompanyPageContent() {
                     </DialogHeader>
                     <div className="space-y-3">
                         <Input
-                            placeholder="Employee Principal ID"
+                            placeholder="Employee Principal ID *"
                             value={empForm.principalId}
                             onChange={(e) => setEmpForm((s) => ({ ...s, principalId: e.target.value }))}
+                            required
                         />
                         <Input
-                            placeholder="Position (optional)"
+                            placeholder="Position *"
                             value={empForm.position}
                             onChange={(e) => setEmpForm((s) => ({ ...s, position: e.target.value }))}
+                            required
                         />
                         <Button 
                             className="w-full" 

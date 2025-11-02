@@ -25,5 +25,23 @@ export interface Employee {
     position: string;
 }
 
+export interface CompanyEmployee {
+    employee_id: string;
+    position: string;
+}
+
+export interface CompanyEmployeeList {
+    employees: CompanyEmployee[];
+}
+
+export interface ProofResult {
+    company_id: string;
+    company_name: string;
+    employee_id: string;
+    employee_name: string;
+    position: string;
+    created_at: bigint;
+}
+
 export type Result<T> = { Ok: T } | { Err: string };
 
