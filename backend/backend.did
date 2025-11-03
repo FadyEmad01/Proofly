@@ -9,17 +9,18 @@ type ProofResult = record {
 };
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : text; Err : text };
-type Result_2 = variant { Ok : ProofResult; Err : text };
+type Result_2 = variant { Ok : vec CompanyEmployee; Err : text };
+type Result_3 = variant { Ok : ProofResult; Err : text };
 service : {
-  add_employee : (text, text, text) -> (bool);
+  add_employee : (text, text, text) -> (Result);
   add_new_companey : (text, text) -> (Result);
   delete_company : (text) -> (Result);
   edit_company : (text, text) -> (Result);
   generate_proof : (text) -> (Result_1);
   get_company_name : (text) -> (Result_1) query;
-  list_company_employess : (text) -> (vec CompanyEmployee) query;
+  list_company_employess : (text) -> (Result_2) query;
   list_my_admin_companies : () -> (vec text) query;
   list_my_companies : () -> (vec text) query;
-  remove_employee : (text, text) -> (bool);
-  verify_proof : (text) -> (Result_2);
+  remove_employee : (text, text) -> (Result);
+  verify_proof : (text) -> (Result_3);
 }

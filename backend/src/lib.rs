@@ -337,13 +337,12 @@ fn get_company_name(comp_username: String) -> Result<String, &'static str> {
 
 
 #[ic_cdk::query]
-fn list_company_employess(comp_username:String) -> Vec<CompanyEmployee> {
+fn list_company_employess(comp_username:String) -> Result<Vec<CompanyEmployee>, &'static str> {
     let caller_principal = ic_cdk::caller();
     
     // Check if caller is admin of this company
     if !is_company_admin(&caller_principal.to_text(), &comp_username) {
-        ic_cdk::println!("Caller is not admin for this company.");
-        return Vec::new();  // Return empty list if not admin , ToDo : return error
+        return Err("Only company admin can view employee list");
     }
     
     let comp_key = StorableString {
@@ -353,19 +352,26 @@ fn list_company_employess(comp_username:String) -> Vec<CompanyEmployee> {
     COMPANY_EMPLOYEES.with(|map| {
         let map_ref = map.borrow();
         match map_ref.get(&comp_key) {
-            Some(emp_list) => emp_list.employees.clone(),
-            None => Vec::new(),
+            Some(emp_list) => Ok(emp_list.employees.clone()),
+            None => Ok(Vec::new()), // Company exists but has no employees yet
         }
     })
 }
 
 #[ic_cdk::update]
-fn add_employee(comp_username:String, emp_id:String, position:String)->bool{
+fn add_employee(comp_username:String, emp_id:String, position:String) -> Result<(), &'static str> {
     let caller_principal = ic_cdk::caller();
 
     if !is_company_admin(&caller_principal.to_text(), &comp_username) {
-        ic_cdk::println!("Caller is not admin for this company.");
-        return false;
+        return Err("Only company admin can add employees");
+    }
+
+    // Validate inputs
+    if emp_id.trim().is_empty() {
+        return Err("Employee ID cannot be empty");
+    }
+    if position.trim().is_empty() {
+        return Err("Position cannot be empty");
     }
 
     // Add employee to COMPANY_EMPLOYEES (company -> employees)
@@ -377,7 +383,7 @@ fn add_employee(comp_username:String, emp_id:String, position:String)->bool{
             // Check if employee already exists
             if let Some(existing) = emp_list.employees.iter_mut().find(|e| e.employee_id == emp_id) {
                 // Update position if employee exists
-                existing.position = position.clone(); // ToDo add multiple positions positions for one employee
+                existing.position = position.clone(); // ToDo add multiple positions for one employee
             } else {
                 // Add new employee
                 emp_list.employees.push(CompanyEmployee {
@@ -414,19 +420,18 @@ fn add_employee(comp_username:String, emp_id:String, position:String)->bool{
         }
     });
 
-    true
+    Ok(())
 }
 
 #[ic_cdk::update]
-fn remove_employee(comp_username:String,emp_id:String,)->bool{
+fn remove_employee(comp_username:String, emp_id:String) -> Result<(), &'static str> {
     let caller_principal = ic_cdk::caller();
     if !is_company_admin(&caller_principal.to_text(), &comp_username) {
-        ic_cdk::println!("Caller is not admin for this company.");
-        return false;
+        return Err("Only company admin can remove employees");
     }
 
     // Remove employee from COMPANY_EMPLOYEES (company -> employees)
-    let removed_from_company = COMPANY_EMPLOYEES.with(|comp|{
+    COMPANY_EMPLOYEES.with(|comp|{
         let mut map=comp.borrow_mut();
         let comp_key = StorableString { value: comp_username.clone() };
        
@@ -434,20 +439,14 @@ fn remove_employee(comp_username:String,emp_id:String,)->bool{
             if let Some(pos) = emp_list.employees.iter().position(|e| e.employee_id == emp_id) {
                 emp_list.employees.remove(pos);
                 map.insert(comp_key, emp_list);
-                return true;
+                Ok(())
             } else {
-                // emp not found
-                return false;
+                Err("Employee not found in this company")
             }
         } else {
-            // comp not found
-            return false;
+            Err("Company not found")
         }
-    });
-
-    if !removed_from_company {
-        return false;
-    }
+    })?;
 
     // Remove company from EMPLOYEE_COMPANIES (employee -> companies)
     EMPLOYEE_COMPANIES.with(|emp|{
@@ -462,7 +461,7 @@ fn remove_employee(comp_username:String,emp_id:String,)->bool{
         }
     });
 
-    true
+    Ok(())
 }
 
 #[ic_cdk::update]
@@ -542,6 +541,14 @@ fn verify_proof(proof_code: String) -> Result<ProofResult, &'static str> {
 #[ic_cdk::update]
 fn add_new_companey(comp_username:String, comp_name:String)->Result<(), &'static str>{
     
+    // Validate inputs
+    if comp_username.trim().is_empty() {
+        return Err("Company username cannot be empty");
+    }
+    if comp_name.trim().is_empty() {
+        return Err("Company name cannot be empty");
+    }
+    
     let storable_comp_username=StorableString{value:comp_username.clone()};
     // check the username
     let exists = COMPANY_MAP.with(|mp| {
@@ -549,7 +556,7 @@ fn add_new_companey(comp_username:String, comp_name:String)->Result<(), &'static
         map.contains_key(&storable_comp_username)
     });
     if exists {
-        return Err("username is alrady exist");
+        return Err("Username already exists");
     }
     
 
@@ -597,6 +604,12 @@ fn add_new_companey(comp_username:String, comp_name:String)->Result<(), &'static
 #[ic_cdk::update]
 fn edit_company(comp_username: String, new_comp_name: String) -> Result<(), &'static str> {
     let caller_principal = ic_cdk::caller();
+    
+    // Validate input
+    if new_comp_name.trim().is_empty() {
+        return Err("Company name cannot be empty");
+    }
+    
     let storable_comp_username = StorableString { value: comp_username.clone() };
 
     // Check if company exists and caller is admin
