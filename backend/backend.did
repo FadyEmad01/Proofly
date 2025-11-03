@@ -1,4 +1,8 @@
-type CompanyEmployee = record { position : text; employee_id : text };
+type CompanyEmployeeWithName = record {
+  employee_name : text;
+  position : text;
+  employee_id : text;
+};
 type ProofResult = record {
   employee_name : text;
   company_name : text;
@@ -9,7 +13,7 @@ type ProofResult = record {
 };
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : text; Err : text };
-type Result_2 = variant { Ok : vec CompanyEmployee; Err : text };
+type Result_2 = variant { Ok : vec CompanyEmployeeWithName; Err : text };
 type Result_3 = variant { Ok : ProofResult; Err : text };
 service : {
   add_employee : (text, text, text) -> (Result);
@@ -18,9 +22,12 @@ service : {
   edit_company : (text, text) -> (Result);
   generate_proof : (text) -> (Result_1);
   get_company_name : (text) -> (Result_1) query;
+  get_my_name : () -> (Result_1) query;
+  get_principal : () -> (text) query;
   list_company_employess : (text) -> (Result_2) query;
   list_my_admin_companies : () -> (vec text) query;
   list_my_companies : () -> (vec text) query;
   remove_employee : (text, text) -> (Result);
+  set_full_name : (text) -> (Result);
   verify_proof : (text) -> (Result_3);
 }

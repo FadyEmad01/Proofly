@@ -45,6 +45,13 @@ pub struct CompanyEmployee {
     pub position: String,
 }
 
+#[derive(CandidType, Deserialize, Clone)]
+pub struct CompanyEmployeeWithName {
+    pub employee_id: String,
+    pub employee_name: String,
+    pub position: String,
+}
+
 pub struct IDList {
     pub ids: Vec<String>,
 }
@@ -234,6 +241,63 @@ fn is_works_on(user_id: &String, company_username: &String) -> bool {
 }
 
 #[ic_cdk::update]
+fn set_full_name(full_name: String) -> Result<(), &'static str> {
+    // Validate input
+    if full_name.trim().is_empty() {
+        return Err("Full name cannot be empty");
+    }
+
+    let caller_principal = ic_cdk::caller();
+    let user_id = caller_principal.to_text();
+    let key = StorableString { value: user_id.clone() };
+
+    EMPLOYEE_MAP.with(|emp_map| {
+        let mut map = emp_map.borrow_mut();
+        let employee = if let Some(mut existing) = map.get(&key) {
+            existing.full_name = full_name.clone();
+            existing
+        } else {
+            Employee { id: user_id.clone(), full_name: full_name.clone() }
+        };
+        map.insert(key, employee);
+    });
+
+    Ok(())
+}
+
+fn get_employee_name_by_id(emp_id: &String) -> String {
+    let key = StorableString { value: emp_id.clone() };
+    EMPLOYEE_MAP.with(|emp_map| {
+        let map_ref = emp_map.borrow();
+        if let Some(employee) = map_ref.get(&key) {
+            employee.full_name.clone()
+        } else {
+            emp_id.clone()
+        }
+    })
+}
+
+#[ic_cdk::query]
+fn get_my_name() -> Result<String, &'static str> {
+    let caller_principal = ic_cdk::caller();
+    let user_id = caller_principal.to_text();
+    let key = StorableString { value: user_id };
+
+    EMPLOYEE_MAP.with(|emp_map| {
+        let map_ref = emp_map.borrow();
+        if let Some(employee) = map_ref.get(&key) {
+            if employee.full_name.trim().is_empty() {
+                Err("Name not set")
+            } else {
+                Ok(employee.full_name.clone())
+            }
+        } else {
+            Err("Name not set")
+        }
+    })
+}
+
+#[ic_cdk::update]
 async fn generate_proof(company_username:String) -> Result<String, &'static str> {
     let caller_principal = ic_cdk::caller();
     let user_id: String = caller_principal.to_text();
@@ -337,7 +401,7 @@ fn get_company_name(comp_username: String) -> Result<String, &'static str> {
 
 
 #[ic_cdk::query]
-fn list_company_employess(comp_username:String) -> Result<Vec<CompanyEmployee>, &'static str> {
+fn list_company_employess(comp_username:String) -> Result<Vec<CompanyEmployeeWithName>, &'static str> {
     let caller_principal = ic_cdk::caller();
     
     // Check if caller is admin of this company
@@ -352,7 +416,16 @@ fn list_company_employess(comp_username:String) -> Result<Vec<CompanyEmployee>, 
     COMPANY_EMPLOYEES.with(|map| {
         let map_ref = map.borrow();
         match map_ref.get(&comp_key) {
-            Some(emp_list) => Ok(emp_list.employees.clone()),
+            Some(emp_list) => {
+                let enriched = emp_list.employees.iter().map(|e| {
+                    CompanyEmployeeWithName {
+                        employee_id: e.employee_id.clone(),
+                        employee_name: get_employee_name_by_id(&e.employee_id),
+                        position: e.position.clone(),
+                    }
+                }).collect::<Vec<CompanyEmployeeWithName>>();
+                Ok(enriched)
+            },
             None => Ok(Vec::new()), // Company exists but has no employees yet
         }
     })
@@ -706,6 +779,11 @@ fn delete_company(comp_username: String) -> Result<(), &'static str> {
     }
 
     Ok(())
+}
+
+#[ic_cdk::query]
+fn get_principal() -> String {
+    ic_cdk::caller().to_text()
 }
 
 ic_cdk::export_candid!();
