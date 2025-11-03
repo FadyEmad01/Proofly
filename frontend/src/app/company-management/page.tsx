@@ -9,11 +9,14 @@ import { Spinner } from "@/components/ui/spinner";
 import { Building2, Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { isAuthenticated } from "@/lib/icp/auth";
+import { useRouter } from "next/navigation";
 import { useICPActor } from '@/hooks/useICPActor'
 import type { Company } from '@/types/backend'
 
 
 export default function page() {
+    const router = useRouter();
     // Mounted gate to prevent hydration mismatch
     const [mounted, setMounted] = useState(false);
     const [companies, setCompanies] = useState<Company[]>([]);
@@ -68,17 +71,19 @@ export default function page() {
         }
     };
 
-    // Load companies from backend after actor is ready
+    // Guard + Load companies after auth
     useEffect(() => {
-        const initLoad = async () => {
+        const init = async () => {
+            const authed = await isAuthenticated();
+            if (!authed) {
+                router.replace("/");
+                return;
+            }
             await loadCompaniesFromBackend();
             setMounted(true);
         };
-        
-        if (actor) {
-            initLoad();
-        }
-    }, [actor]);
+        init();
+    }, [actor, router]);
 
 
     // Add Dialog state

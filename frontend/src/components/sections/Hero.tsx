@@ -7,6 +7,8 @@ import { LoadingSwap } from "../ui/loading-swap";
 import Link from "next/link";
 import CrossSVG from "../svg/CrossSVG";
 import { useRouter } from "next/navigation";
+import { login } from "@/lib/icp/auth";
+import { createAuthenticatedICPActor } from "@/lib/icp/actor";
 
 export default function Hero() {
     const router = useRouter();
@@ -34,7 +36,11 @@ export default function Hero() {
                         <div className="flex gap-4 md:flex-row flex-col lg:flex-col">
                             <Button
                                 className="w-full"
-                                onClick={() => router.push("/dashboard")}
+                                onClick={async () => {
+                                    const identity = await login();
+                                    await createAuthenticatedICPActor(identity);
+                                    router.push("/dashboard");
+                                }}
                             >
                                 <LoadingSwap isLoading={false}>
                                     <span>Login with internet identity</span>

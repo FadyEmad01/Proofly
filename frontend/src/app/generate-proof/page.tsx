@@ -13,6 +13,8 @@ import { BadgeCheck, CheckIcon, ChevronDownIcon, Clock, CopyIcon, ShieldCheck } 
 import { Label } from '@/components/ui/label'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRef, useState, useEffect } from 'react'
+import { isAuthenticated } from '@/lib/icp/auth'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { toastManager } from '@/components/ui/toast'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -26,6 +28,7 @@ const generateProofCodeSchema = z.object({
 type generateProofCodeFormData = z.infer<typeof generateProofCodeSchema>
 
 export default function page() {
+    const router = useRouter();
     const [companies, setCompanies] = useState<Array<{username: string, name: string}>>([])
     const [loadingCompanies, setLoadingCompanies] = useState(true)
     const [generatedProof, setGeneratedProof] = useState<string>("")
@@ -38,16 +41,18 @@ export default function page() {
     // Initialize ICP Actor using custom hook
     const { actor, loading: connecting, error: connectionError } = useICPActor()
     
-    // Load companies when actor is ready
+    // Guard + Load companies
     useEffect(() => {
-        const loadCompanies = async () => {
+        const init = async () => {
+            const authed = await isAuthenticated();
+            if (!authed) {
+                router.replace('/');
+                return;
+            }
             if (!actor) return;
-            
             try {
                 setLoadingCompanies(true);
                 const companyUsernames = await actor.list_my_companies() as string[];
-                
-                // Fetch company names for each username
                 const companiesWithNames = await Promise.all(
                     companyUsernames.map(async (username) => {
                         try {
@@ -59,22 +64,20 @@ export default function page() {
                         }
                     })
                 );
-                
                 setCompanies(companiesWithNames);
             } catch (error) {
                 toastManager.add({
-                    title: "Failed to Load Companies",
-                    description: error instanceof Error ? error.message : "Failed to load companies",
-                    type: "error",
+                    title: 'Failed to Load Companies',
+                    description: error instanceof Error ? error.message : 'Failed to load companies',
+                    type: 'error',
                     timeout: 3000,
                 });
             } finally {
                 setLoadingCompanies(false);
             }
         };
-        
-        loadCompanies();
-    }, [actor])
+        init();
+    }, [actor, router])
 
     const form = useForm<generateProofCodeFormData>({
         resolver: zodResolver(generateProofCodeSchema),
