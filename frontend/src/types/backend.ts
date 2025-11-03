@@ -4,7 +4,7 @@
 
 export interface Proof {
     code: string;
-    company_id: string;
+    company_username: string;
     employee_id: string;
     created_at: bigint;
     expires_at: bigint;
@@ -35,7 +35,7 @@ export interface CompanyEmployeeList {
 }
 
 export interface ProofResult {
-    company_id: string;
+    company_username: string;
     company_name: string;
     employee_id: string;
     employee_name: string;

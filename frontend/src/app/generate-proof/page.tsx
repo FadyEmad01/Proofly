@@ -26,13 +26,14 @@ const generateProofCodeSchema = z.object({
 type generateProofCodeFormData = z.infer<typeof generateProofCodeSchema>
 
 export default function page() {
-    const [companies, setCompanies] = useState<string[]>([])
+    const [companies, setCompanies] = useState<Array<{username: string, name: string}>>([])
     const [loadingCompanies, setLoadingCompanies] = useState(true)
     const [generatedProof, setGeneratedProof] = useState<string>("")
     const [copied, setCopied] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
     const [open, setOpen] = useState<boolean>(false)
-    const [selectedCompany, setSelectedCompany] = useState<string>("")
+    const [selectedCompanyUsername, setSelectedCompanyUsername] = useState<string>("")
+    const [selectedCompanyName, setSelectedCompanyName] = useState<string>("")
     
     // Initialize ICP Actor using custom hook
     const { actor, loading: connecting, error: connectionError } = useICPActor()
@@ -44,8 +45,22 @@ export default function page() {
             
             try {
                 setLoadingCompanies(true);
-                const companyList = await actor.list_my_companies() as string[];
-                setCompanies(companyList);
+                const companyUsernames = await actor.list_my_companies() as string[];
+                
+                // Fetch company names for each username
+                const companiesWithNames = await Promise.all(
+                    companyUsernames.map(async (username) => {
+                        try {
+                            const nameResult = await actor.get_company_name(username);
+                            const name = 'Ok' in nameResult ? nameResult.Ok : username;
+                            return { username, name };
+                        } catch (error) {
+                            return { username, name: username };
+                        }
+                    })
+                );
+                
+                setCompanies(companiesWithNames);
             } catch (error) {
                 toastManager.add({
                     title: "Failed to Load Companies",
@@ -89,7 +104,7 @@ export default function page() {
             return;
         }
 
-        if (!selectedCompany) {
+        if (!selectedCompanyUsername) {
             toastManager.add({
                 title: "No Company Selected",
                 description: "Please select a company first.",
@@ -107,7 +122,7 @@ export default function page() {
                 type: "loading",
             });
 
-            const result = await actor.generate_proof(selectedCompany);
+            const result = await actor.generate_proof(selectedCompanyUsername);
 
             toastManager.close(id);
 
@@ -198,8 +213,8 @@ export default function page() {
                                                                     className="w-full justify-between border-input bg-background px-3 font-normal outline-offset-0 outline-none hover:bg-background focus-visible:outline-[3px]"
                                                                     disabled={loadingCompanies || connecting}
                                                                 >
-                                                                    <span className={cn("truncate", !selectedCompany && "text-muted-foreground")}>
-                                                                        {selectedCompany || (loadingCompanies ? "Loading companies..." : "Select company")}
+                                                                    <span className={cn("truncate", !selectedCompanyName && "text-muted-foreground")}>
+                                                                        {selectedCompanyName || (loadingCompanies ? "Loading companies..." : "Select company")}
                                                                     </span>
                                                                     <ChevronDownIcon
                                                                         size={16}
@@ -219,16 +234,17 @@ export default function page() {
                                                                         <CommandGroup>
                                                                             {companies.map((company) => (
                                                                                 <CommandItem
-                                                                                    key={company}
-                                                                                    value={company}
-                                                                                    onSelect={(currentValue) => {
-                                                                                        setSelectedCompany(currentValue)
+                                                                                    key={company.username}
+                                                                                    value={company.name}
+                                                                                    onSelect={() => {
+                                                                                        setSelectedCompanyUsername(company.username)
+                                                                                        setSelectedCompanyName(company.name)
                                                                                         setOpen(false)
-                                                                                        form.setValue("company", currentValue)
+                                                                                        form.setValue("company", company.username)
                                                                                       }}
                                                                                 >
-                                                                                    {company}
-                                                                                    {selectedCompany === company && (
+                                                                                    {company.name}
+                                                                                    {selectedCompanyUsername === company.username && (
                                                                                         <CheckIcon size={16} className="ml-auto" />
                                                                                     )}
                                                                                 </CommandItem>

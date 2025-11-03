@@ -12,12 +12,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useICPActor } from '@/hooks/useICPActor'
 import type { Company } from '@/types/backend'
 
-const STORAGE_KEY = "companies";
-
-const DEFAULT_COMPANIES: Company[] = [
-    { id: 1, username: "artify", name: "Artify Studio", employees: [] },
-    { id: 2, username: "vision", name: "Vision Arts", employees: [], image: "https://placehold.co/600x400" },
-];
 
 export default function page() {
     // Mounted gate to prevent hydration mismatch
@@ -28,46 +22,64 @@ export default function page() {
     // Initialize ICP Actor using custom hook
     const { actor, loading: connecting, error: connectionError } = useICPActor();
 
+    // Helper function to load companies from backend
+    const loadCompaniesFromBackend = async () => {
+        if (!actor) return;
+        
+        try {
+            setLoadingCompanies(true);
+            
+            // Load companies from backend (returns array of usernames)
+            const companyUsernames = await actor.list_my_admin_companies() as string[];
+            
+            // Fetch company names for each username
+            const companiesData: Company[] = await Promise.all(
+                companyUsernames.map(async (username, index) => {
+                    try {
+                        // Get company name from backend
+                        const nameResult = await actor.get_company_name(username);
+                        const companyName = 'Ok' in nameResult ? nameResult.Ok : username;
+                        
+                        return {
+                            id: index + 1,
+                            username: username,
+                            name: companyName,
+                            image: "",
+                            employees: []
+                        };
+                    } catch (error) {
+                        // Fallback to username if get_company_name fails
+                        return {
+                            id: index + 1,
+                            username: username,
+                            name: username,
+                            image: "",
+                            employees: []
+                        };
+                    }
+                })
+            );
+            
+            setCompanies(companiesData);
+        } catch (error) {
+            console.error("Failed to load companies:", error);
+        } finally {
+            setLoadingCompanies(false);
+        }
+    };
+
     // Load companies from backend after actor is ready
     useEffect(() => {
-        const loadCompanies = async () => {
-            if (!actor) return;
-            
-            try {
-                setLoadingCompanies(true);
-                
-                // Load companies from backend (returns array of usernames)
-                const companyUsernames = await actor.list_my_admin_companies() as string[];
-                
-                // Convert string[] to Company[]
-                const companiesData: Company[] = companyUsernames.map((username, index) => ({
-                    id: index + 1,
-                    username: username,
-                    name: username,  // Using username as name for now
-                    image: "",
-                    employees: []
-                }));
-                
-                setCompanies(companiesData);
-            } catch (error) {
-                // Fallback to default companies on error
-                setCompanies(DEFAULT_COMPANIES);
-            } finally {
-                setLoadingCompanies(false);
-                setMounted(true);
-            }
+        const initLoad = async () => {
+            await loadCompaniesFromBackend();
+            setMounted(true);
         };
         
-        loadCompanies();
+        if (actor) {
+            initLoad();
+        }
     }, [actor]);
 
-    // Persist to localStorage after mounted (keeping for now)
-    useEffect(() => {
-        if (!mounted) return;
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(companies));
-        } catch { }
-    }, [companies, mounted]);
 
     // Add Dialog state
     const [openAdd, setOpenAdd] = useState(false);
@@ -78,8 +90,7 @@ export default function page() {
     // Edit Dialog state
     const [openEdit, setOpenEdit] = useState(false);
     const [editingCompany, setEditingCompany] = useState<Company | null>(null);
-    const [editForm, setEditForm] = useState({ username: "", name: "" });
-    const [editMode, setEditMode] = useState<"name" | "username" | "both">("both");
+    const [editForm, setEditForm] = useState({ name: "" });
     const [savingEdit, setSavingEdit] = useState(false);
 
     const openAddDialog = () => {
@@ -96,8 +107,7 @@ export default function page() {
 
     const openEditDialog = (c: Company) => {
         setEditingCompany(c);
-        setEditForm({ username: c.username, name: c.name });
-        setEditMode("both");
+        setEditForm({ name: c.name });
         setOpenEdit(true);
     };
 
@@ -110,8 +120,7 @@ export default function page() {
     const closeEditDialog = () => {
         setOpenEdit(false);
         setEditingCompany(null);
-        setEditForm({ username: "", name: "" });
-        setEditMode("both");
+        setEditForm({ name: "" });
     };
 
     const handleAddCompany = async () => {
@@ -138,14 +147,7 @@ export default function page() {
                 alert("Company added successfully!");
                 
                 // Reload companies from backend
-                const companyUsernames = await actor.list_my_admin_companies() as string[];
-                const companiesData: Company[] = companyUsernames.map((username, index) => ({
-                    id: index + 1,
-                    username: username,
-                    name: username,  // Using username as name for now
-                    employees: []
-                }));
-                setCompanies(companiesData);
+                await loadCompaniesFromBackend();
                 closeAddDialog();
             } else {
                 alert("Error: " + result.Err);
@@ -160,37 +162,37 @@ export default function page() {
     const handleEditCompany = async () => {
         if (!editingCompany) return;
 
-        // Validate based on edit mode
-        if (editMode === "name" || editMode === "both") {
-            if (!editForm.name.trim()) {
-                alert("Please enter company name");
-                return;
-            }
-        }
-        if (editMode === "username" || editMode === "both") {
-            if (!editForm.username.trim()) {
-                alert("Please enter company username");
-                return;
-            }
+        // Validate name
+        if (!editForm.name.trim()) {
+            alert("Please enter company name");
+            return;
         }
 
-        // TODO: Edit functionality (not implemented in backend yet)
-        // For now, update locally
+        if (!actor) {
+            alert("Not connected to backend");
+            return;
+        }
+
         setSavingEdit(true);
         try {
-            setCompanies((prev) =>
-                prev.map((c) =>
-                    c.id === editingCompany.id 
-                        ? { 
-                            ...c, 
-                            name: editMode === "name" || editMode === "both" ? editForm.name.trim() : c.name,
-                            username: editMode === "username" || editMode === "both" ? editForm.username.trim() : c.username
-                          } 
-                        : c
-                )
-            );
-            alert("Company updated successfully!");
-            closeEditDialog();
+            // Call backend to edit company name
+            const result = await actor.edit_company(editingCompany.username, editForm.name.trim());
+            
+            if ('Ok' in result) {
+                alert("Company updated successfully!");
+                
+                // Update local state
+                setCompanies((prev) =>
+                    prev.map((c) =>
+                        c.username === editingCompany.username 
+                            ? { ...c, name: editForm.name.trim() } 
+                            : c
+                    )
+                );
+                closeEditDialog();
+            } else {
+                alert("Error: " + result.Err);
+            }
         } catch (error) {
             alert("Failed to update company: " + (error instanceof Error ? error.message : "Unknown error"));
         } finally {
@@ -388,69 +390,31 @@ export default function page() {
 
             {/* Edit Company Dialog */}
             <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-                <DialogContent className="sm:max-w-[450px]">
+                <DialogContent className="sm:max-w-[400px]">
                     <DialogHeader>
-                        <DialogTitle>Edit Company</DialogTitle>
+                        <DialogTitle>Edit Company Name</DialogTitle>
                     </DialogHeader>
 
                     <div className="space-y-4">
-                        {/* Edit Mode Selection */}
-                        <div>
-                            <label className="text-sm font-medium mb-2 block">What do you want to edit?</label>
-                            <div className="grid grid-cols-3 gap-2">
-                                <Button
-                                    type="button"
-                                    variant={editMode === "name" ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setEditMode("name")}
-                                    className="w-full"
-                                >
-                                    Name
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={editMode === "username" ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setEditMode("username")}
-                                    className="w-full"
-                                >
-                                    Username
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={editMode === "both" ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setEditMode("both")}
-                                    className="w-full"
-                                >
-                                    Both
-                                </Button>
+                        {/* Show current username (read-only) */}
+                        {editingCompany && (
+                            <div>
+                                <label className="text-sm font-medium mb-1 block text-gray-600">Company Username</label>
+                                <div className="px-3 py-2 bg-gray-100 rounded-md text-sm text-gray-700 border border-gray-200">
+                                    {editingCompany.username}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">Username cannot be changed</p>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Edit Fields */}
-                        <div className="space-y-3">
-                            {(editMode === "username" || editMode === "both") && (
-                                <div>
-                                    <label className="text-sm font-medium mb-1 block">Company Username</label>
-                                    <Input
-                                        placeholder="Enter company username"
-                                        value={editForm.username}
-                                        onChange={(e) => setEditForm((s) => ({ ...s, username: e.target.value }))}
-                                    />
-                                </div>
-                            )}
-                            
-                            {(editMode === "name" || editMode === "both") && (
-                                <div>
-                                    <label className="text-sm font-medium mb-1 block">Company Name</label>
-                                    <Input
-                                        placeholder="Enter company name"
-                                        value={editForm.name}
-                                        onChange={(e) => setEditForm((s) => ({ ...s, name: e.target.value }))}
-                                    />
-                                </div>
-                            )}
+                        {/* Edit Name Field */}
+                        <div>
+                            <label className="text-sm font-medium mb-1 block">Company Name</label>
+                            <Input
+                                placeholder="Enter company name"
+                                value={editForm.name}
+                                onChange={(e) => setEditForm({ name: e.target.value })}
+                            />
                         </div>
 
                         {/* Action Buttons */}

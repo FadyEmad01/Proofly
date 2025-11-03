@@ -40,12 +40,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useICPActor } from '@/hooks/useICPActor'
 import type { Company, Employee } from '@/types/backend'
 
-// ========== Local storage utils ==========
-const STORAGE_KEY = "companies";
-const genId = () =>
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2);
 
 // ========== Back button (router back or fallback) ==========
 function useSmartBack() {
@@ -386,55 +380,42 @@ function CompanyPageContent() {
         const loadCompanyData = async () => {
             setLoadingEmployees(true);
             try {
-                // Get employees from backend
-                const employeesData = await actor.list_company_employess(companyUsername);
+                // Get company name from backend
+                const nameResult = await actor.get_company_name(companyUsername);
+                const companyName = 'Ok' in nameResult ? nameResult.Ok : companyUsername;
                 
-                // Convert to Employee objects
-                const employees: Employee[] = employeesData.map((emp: any) => ({
-                    id: emp.employee_id,
-                    name: emp.employee_id,  // Using principal ID as name
-                    position: emp.position
-                }));
+                // Get employees from backend
+                const employeesResult = await actor.list_company_employess(companyUsername);
+                
+                let employees: Employee[] = [];
+                if ('Ok' in employeesResult) {
+                    // Convert to Employee objects
+                    employees = employeesResult.Ok.map((emp: any) => ({
+                        id: emp.employee_id,
+                        name: emp.employee_id,  // Using principal ID as name
+                        position: emp.position
+                    }));
+                }
                 
                 // Create company object
                 const companyData: Company = {
                     id: 1,
                     username: companyUsername,
-                    name: companyUsername,  // Using username as name
+                    name: companyName,
                     image: "",
                     employees: employees
                 };
                 
                 setCompany(companyData);
             } catch (error) {
-                
-                // Fallback to localStorage
-                try {
-                    const raw = localStorage.getItem(STORAGE_KEY);
-                    if (raw) {
-                        const list = JSON.parse(raw) as Company[];
-                        const found = list.find((c) => c.username === companyUsername) || null;
-                        if (found) {
-                            setCompany(found);
-                        } else {
-                            // Create empty company
-                            setCompany({
-                                id: 1,
-                                username: companyUsername,
-                                name: companyUsername,
-                                employees: []
-                            });
-                        }
-                    } else {
-                        // Create empty company
-                        setCompany({
-                            id: 1,
-                            username: companyUsername,
-                            name: companyUsername,
-                            employees: []
-                        });
-                    }
-                } catch { }
+                console.error("Failed to load company data:", error);
+                // Create empty company as fallback
+                setCompany({
+                    id: 1,
+                    username: companyUsername,
+                    name: companyUsername,
+                    employees: []
+                });
             } finally {
                 setLoadingEmployees(false);
             }
@@ -442,16 +423,6 @@ function CompanyPageContent() {
         
         loadCompanyData();
     }, [mounted, actor, companyUsername]);
-
-    const saveCompany = (next: Company) => {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            const list = raw ? (JSON.parse(raw) as Company[]) : [];
-            const updated = list.map((c) => (c.id === next.id ? next : c));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-            setCompany(next);
-        } catch { }
-    };
 
     // Employee dialog state
     const [openEmp, setOpenEmp] = useState(false);
@@ -485,51 +456,58 @@ function CompanyPageContent() {
             return;
         }
 
-        if (isEditing && editingEmpId) {
-            // TODO: Edit functionality (not implemented in backend yet)
-            const next: Company = {
-                ...company,
-                employees: company.employees.map((e) =>
-                    e.id === editingEmpId ? { ...e, name: empForm.principalId.trim(), position: empForm.position.trim() } : e
-                ),
-            };
-            saveCompany(next);
-        } else {
-            // Add employee via backend
-            if (!actor) {
-                alert("Not connected to backend");
-                return;
-            }
+        if (!actor) {
+            alert("Not connected to backend");
+            return;
+        }
 
-            setSaving(true);
-            try {
+        setSaving(true);
+        try {
+            if (isEditing && editingEmpId) {
+                // Edit: Remove old and add new (workaround since backend doesn't have direct edit)
+                const removeResult = await actor.remove_employee(companyUsername, editingEmpId);
+                
+                if ('Ok' in removeResult) {
+                    const addResult = await actor.add_employee(companyUsername, empForm.principalId.trim(), empForm.position.trim());
+                    
+                    if ('Ok' in addResult) {
+                        alert("Employee updated successfully!");
+                    } else {
+                        alert("Error updating employee: " + addResult.Err);
+                    }
+                } else {
+                    alert("Error: " + removeResult.Err);
+                }
+            } else {
+                // Add new employee
                 const result = await actor.add_employee(companyUsername, empForm.principalId.trim(), empForm.position.trim());
                 
-                if (result === true) {
+                if ('Ok' in result) {
                     alert("Employee added successfully!");
-                    
-                    // Reload employees from backend
-                    const employeesData = await actor.list_company_employess(companyUsername);
-                    const employees: Employee[] = employeesData.map((emp: any) => ({
-                        id: emp.employee_id,
-                        name: emp.employee_id,
-                        position: emp.position
-                    }));
-                    
-                    const updatedCompany: Company = {
-                        ...company,
-                        employees: employees
-                    };
-                    setCompany(updatedCompany);
-                    saveCompany(updatedCompany);
                 } else {
-                    alert("Failed to add employee");
+                    alert("Error: " + result.Err);
                 }
-            } catch (error) {
-                alert("Error: " + (error instanceof Error ? error.message : "Unknown error"));
-            } finally {
-                setSaving(false);
             }
+            
+            // Reload employees from backend
+            const employeesResult = await actor.list_company_employess(companyUsername);
+            
+            if ('Ok' in employeesResult) {
+                const employees: Employee[] = employeesResult.Ok.map((emp: any) => ({
+                    id: emp.employee_id,
+                    name: emp.employee_id,
+                    position: emp.position
+                }));
+                
+                setCompany({
+                    ...company,
+                    employees: employees
+                });
+            }
+        } catch (error) {
+            alert("Error: " + (error instanceof Error ? error.message : "Unknown error"));
+        } finally {
+            setSaving(false);
         }
 
         setOpenEmp(false);
@@ -550,23 +528,26 @@ function CompanyPageContent() {
         try {
             const result = await actor.remove_employee(companyUsername, id);
             
-            if (result === true) {
-                // Reload employees from backend
-                const employeesData = await actor.list_company_employess(companyUsername);
-                const employees: Employee[] = employeesData.map((emp: any) => ({
-                    id: emp.employee_id,
-                    name: emp.employee_id,
-                    position: emp.position
-                }));
+            if ('Ok' in result) {
+                alert("Employee deleted successfully!");
                 
-                const updatedCompany: Company = {
-                    ...company,
-                    employees: employees
-                };
-                setCompany(updatedCompany);
-                saveCompany(updatedCompany);
+                // Reload employees from backend
+                const employeesResult = await actor.list_company_employess(companyUsername);
+                
+                if ('Ok' in employeesResult) {
+                    const employees: Employee[] = employeesResult.Ok.map((emp: any) => ({
+                        id: emp.employee_id,
+                        name: emp.employee_id,
+                        position: emp.position
+                    }));
+                    
+                    setCompany({
+                        ...company,
+                        employees: employees
+                    });
+                }
             } else {
-                alert("Failed to delete employee");
+                alert("Error: " + result.Err);
             }
         } catch (error) {
             alert("Error: " + (error instanceof Error ? error.message : "Unknown error"));
@@ -585,34 +566,42 @@ function CompanyPageContent() {
         try {
             // Delete each employee
             let successCount = 0;
+            const errors: string[] = [];
+            
             for (const id of ids) {
                 try {
                     const result = await actor.remove_employee(companyUsername, id);
-                    if (result === true) {
+                    if ('Ok' in result) {
                         successCount++;
+                    } else {
+                        errors.push(`${id}: ${result.Err}`);
                     }
                 } catch (error) {
-                    // Silently continue with next employee
+                    errors.push(`${id}: ${error instanceof Error ? error.message : "Unknown error"}`);
                 }
             }
             
-            if (successCount > 0) {
-                // Reload employees from backend
-                const employeesData = await actor.list_company_employess(companyUsername);
-                const employees: Employee[] = employeesData.map((emp: any) => ({
+            // Reload employees from backend
+            const employeesResult = await actor.list_company_employess(companyUsername);
+            
+            if ('Ok' in employeesResult) {
+                const employees: Employee[] = employeesResult.Ok.map((emp: any) => ({
                     id: emp.employee_id,
                     name: emp.employee_id,
                     position: emp.position
                 }));
                 
-                const updatedCompany: Company = {
+                setCompany({
                     ...company,
                     employees: employees
-                };
-                setCompany(updatedCompany);
-                saveCompany(updatedCompany);
-                
+                });
+            }
+            
+            // Show summary
+            if (successCount > 0 && errors.length === 0) {
                 alert(`Successfully deleted ${successCount} employee(s)`);
+            } else if (successCount > 0 && errors.length > 0) {
+                alert(`Deleted ${successCount} employee(s). ${errors.length} failed.`);
             } else {
                 alert("Failed to delete employees");
             }
