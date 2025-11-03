@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { Button } from "../ui/button";
 import { Building2, FileCheck, ShieldCheck, LogOut, User, Home, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logout } from "@/lib/icp/auth";
+import { useRouter } from "next/navigation";
 
 const navLinks = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -17,6 +19,12 @@ const navLinks = [
 export default function Navbar() {
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const router = useRouter();
+
+    const handleLogout = async () => {
+        await logout();
+        router.replace("/");
+    };
 
     return (
         <nav className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm">
@@ -75,6 +83,7 @@ export default function Navbar() {
                             variant="outline" 
                             size="sm"
                             className="hidden sm:flex gap-2 font-matter !bg-white !text-gray-700 border-2 border-gray-300 hover:!bg-red-600 hover:!text-white hover:!border-red-600 transition-all duration-200 active:scale-95"
+                            onClick={handleLogout}
                         >
                             <LogOut className="w-4 h-4" />
                             <span>Logout</span>
@@ -126,7 +135,7 @@ export default function Navbar() {
                                     <User className="w-5 h-5" />
                                     <span className="font-matter text-sm">Account</span>
                                 </button>
-                                <button className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 transition-all duration-200 text-red-600">
+                                <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 transition-all duration-200 text-red-600">
                                     <LogOut className="w-5 h-5" />
                                     <span className="font-matter text-sm">Logout</span>
                                 </button>

@@ -7,11 +7,21 @@ import { LoadingSwap } from "../ui/loading-swap";
 import Link from "next/link";
 import CrossSVG from "../svg/CrossSVG";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/icp/auth";
+import { login, isAuthenticated } from "@/lib/icp/auth";
 import { createAuthenticatedICPActor } from "@/lib/icp/actor";
+import { useEffect, useState } from "react";
 
 export default function Hero() {
     const router = useRouter();
+    const [authed, setAuthed] = useState(false);
+
+    useEffect(() => {
+        const check = async () => {
+            const a = await isAuthenticated();
+            setAuthed(!!a);
+        };
+        check();
+    }, []);
     return (
         <BorderLayout id="hero" className="mt-3 border-t">
             <CrossSVG className="absolute -left-3 -top-3 " />
@@ -37,13 +47,18 @@ export default function Hero() {
                             <Button
                                 className="w-full"
                                 onClick={async () => {
+                                    if (authed) {
+                                        router.push("/dashboard");
+                                        return;
+                                    }
                                     const identity = await login();
                                     await createAuthenticatedICPActor(identity);
+                                    setAuthed(true);
                                     router.push("/dashboard");
                                 }}
                             >
                                 <LoadingSwap isLoading={false}>
-                                    <span>Login with internet identity</span>
+                                    <span>{authed ? "Go to Dashboard" : "Login with internet identity"}</span>
                                 </LoadingSwap>
                             </Button>
                             <Button asChild
