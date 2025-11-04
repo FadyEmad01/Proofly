@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { createICPActor } from '@/lib/icp/actor';
+import { createAuthenticatedActor } from '@/lib/icp/actor';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
- * Custom React Hook for ICP Actor
- * Automatically initializes the actor on mount and manages loading/error states
+ * Custom React Hook for ICP Actor with Authentication Support
+ * Automatically creates/recreates the actor when identity changes
+ * This ensures all backend calls use the authenticated identity
  * 
  * @returns {object} { actor, loading, error }
  * - actor: The ICP actor instance (null until loaded)
@@ -11,6 +13,7 @@ import { createICPActor } from '@/lib/icp/actor';
  * - error: Error message if initialization failed (null otherwise)
  */
 export const useICPActor = () => {
+    const { identity, isAuthenticated } = useAuth();
     const [actor, setActor] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -20,7 +23,9 @@ export const useICPActor = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const icpActor = await createICPActor();
+                // Pass the authenticated identity to create the actor
+                // If not authenticated, identity will be undefined (anonymous)
+                const icpActor = await createAuthenticatedActor(identity);
                 setActor(icpActor);
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to connect to backend';
@@ -31,7 +36,7 @@ export const useICPActor = () => {
         };
 
         initializeActor();
-    }, []);
+    }, [identity, isAuthenticated]); // Re-create actor when identity changes!
 
     return { actor, loading, error };
 };

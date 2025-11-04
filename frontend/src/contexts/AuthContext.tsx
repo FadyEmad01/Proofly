@@ -34,14 +34,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [principal, setPrincipal] = useState<string>();
   const [isLoading, setIsLoading] = useState(true);
 
+  // Check if we're on mainnet by looking at the URL
+  const isMainnet = () => {
+    if (typeof window === 'undefined') return false;
+    const hostname = window.location.hostname;
+    return hostname.includes('.ic0.app') || hostname.includes('.icp0.io') || hostname.includes('.raw.icp0.io');
+  };
+
+  // Get frontend canister ID dynamically
+  const getFrontendCanisterId = () => {
+    return process.env.NEXT_PUBLIC_CANISTER_ID_FRONTEND || 
+           process.env.CANISTER_ID_FRONTEND || 
+           '5kykv-2qaaa-aaaas-qcs6q-cai';
+  };
+
+  // Canonical origin for derivation (mainnet frontend canister)
+  const getCanonicalOrigin = () => {
+    if (isMainnet()) {
+      return `https://${getFrontendCanisterId()}.icp0.io`;
+    }
+    return undefined; // No derivation origin for local development
+  };
+
   // Determine the identity provider based on environment
   const getIdentityProvider = () => {
     // Check if we're on mainnet (production)
-    if (process.env.NEXT_PUBLIC_DFX_NETWORK === 'ic') {
-      return 'https://id.ai/'; // Mainnet
+    if (isMainnet()) {
+      return 'https://id.ai/'; // Internet Identity V2
     }
-    // Local development
-    return 'http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943';
+    // Local development - use the Internet Identity canister ID from dfx.json
+    const iiCanisterId = process.env.NEXT_PUBLIC_CANISTER_ID_INTERNET_IDENTITY || 
+                        process.env.CANISTER_ID_INTERNET_IDENTITY || 
+                        'rdmx6-jaaaa-aaaaa-aaadq-cai';
+    return `http://${iiCanisterId}.localhost:4943`;
   };
 
   // Initialize auth client
@@ -76,8 +101,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     try {
-      await authClient.login({
+      const derivationOrigin = getCanonicalOrigin();
+      const loginOptions: any = {
         identityProvider: getIdentityProvider(),
+        // Session lasts for 7 days
+        maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1000 * 1000 * 1000),
         onSuccess: async () => {
           const authenticated = await authClient.isAuthenticated();
           setIsAuthenticated(authenticated);
@@ -85,13 +113,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (authenticated) {
             const identity = authClient.getIdentity();
             setIdentity(identity);
-            setPrincipal(identity.getPrincipal().toString());
+            const principalId = identity.getPrincipal().toString();
+            setPrincipal(principalId);
+            console.log('Login successful. Principal:', principalId);
           }
         },
-        onError: (error) => {
+        onError: (error?: string) => {
           console.error('Login failed:', error);
         },
-      });
+      };
+
+      // Add derivationOrigin only for mainnet
+      if (derivationOrigin) {
+        loginOptions.derivationOrigin = derivationOrigin;
+      }
+
+      await authClient.login(loginOptions);
     } catch (error) {
       console.error('Login error:', error);
     }

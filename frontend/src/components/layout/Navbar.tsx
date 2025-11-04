@@ -28,9 +28,25 @@ export default function Navbar() {
     const [isEditingName, setIsEditingName] = useState(false);
     const [editName, setEditName] = useState<string>("");
     const [savingName, setSavingName] = useState(false);
+    const [principal, setPrincipal] = useState<string>("");
     const { actor, loading: connecting } = useICPActor();
-    const { principal: authPrincipal, isAuthenticated, logout: authLogout } = useAuth();
-    const principal = authPrincipal || "";
+    const { isAuthenticated, logout: authLogout } = useAuth();
+
+    // Fetch principal from backend using actor
+    const fetchPrincipal = async () => {
+        if (!actor || connecting) {
+            return;
+        }
+
+        try {
+            const principalId = await actor.get_principal();
+            console.log("Principal from backend:", principalId);
+            setPrincipal(principalId || "");
+        } catch (error) {
+            console.error("Failed to fetch principal:", error);
+            setPrincipal("");
+        }
+    };
 
     // Fetch account name from backend using actor
     const fetchAccountName = async () => {
@@ -60,17 +76,19 @@ export default function Navbar() {
     };
 
     useEffect(() => {
+        fetchPrincipal();
         fetchAccountName();
     }, [actor, connecting]);
 
-    // Refetch name when popover opens
+    // Refetch name and principal when popover opens
     useEffect(() => {
         if (isPopoverOpen && actor && !connecting) {
+            fetchPrincipal();
             fetchAccountName();
         }
     }, [isPopoverOpen, actor, connecting]);
 
-    // Note: Principal is now from authPrincipal (useAuth)
+    // Note: Principal is now fetched from backend using get_principal()
 
     // Handle copy principal
     const handleCopyPrincipal = async () => {

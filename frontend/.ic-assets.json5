@@ -1,0 +1,49 @@
+[
+  {
+    "match": "**/*",
+    "cache": {
+      "max_age": 31536000
+    },
+    "headers": {
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "X-XSS-Protection": "1; mode=block",
+      "Referrer-Policy": "same-origin",
+      "Content-Security-Policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://*.ic0.app https://ic0.app https://icp-api.io https://icp0.io https://*.icp0.io https://identity.ic0.app; img-src 'self' data: https:; font-src 'self' data:;"
+    }
+  },
+  {
+    "match": "index.html",
+    "cache": {
+      "max_age": 0
+    },
+    "headers": {
+      "Cache-Control": "no-cache, no-store, must-revalidate"
+    }
+  },
+  {
+    "match": "**/*.html",
+    "cache": {
+      "max_age": 0
+    }
+  },
+  {
+    "match": "**/*.js",
+    "cache": {
+      "max_age": 31536000
+    },
+    "headers": {
+      "Content-Type": "application/javascript"
+    }
+  },
+  {
+    "match": "**/*.css",
+    "cache": {
+      "max_age": 31536000
+    },
+    "headers": {
+      "Content-Type": "text/css"
+    }
+  }
+]
+

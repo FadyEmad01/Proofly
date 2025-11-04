@@ -57,7 +57,7 @@ export default function page() {
             })
             return
         }
-
+        
         if (!actor) {
             toastManager.add({
                 title: "Connection Error",
