@@ -13,8 +13,6 @@ import { BadgeCheck, CheckIcon, ChevronDownIcon, Clock, CopyIcon, ShieldCheck } 
 import { Label } from '@/components/ui/label'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRef, useState, useEffect } from 'react'
-import { isAuthenticated } from '@/lib/icp/auth'
-import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { toastManager } from '@/components/ui/toast'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -28,7 +26,6 @@ const generateProofCodeSchema = z.object({
 type generateProofCodeFormData = z.infer<typeof generateProofCodeSchema>
 
 export default function page() {
-    const router = useRouter();
     const [companies, setCompanies] = useState<Array<{username: string, name: string}>>([])
     const [loadingCompanies, setLoadingCompanies] = useState(true)
     const [generatedProof, setGeneratedProof] = useState<string>("")
@@ -41,14 +38,9 @@ export default function page() {
     // Initialize ICP Actor using custom hook
     const { actor, loading: connecting, error: connectionError } = useICPActor()
     
-    // Guard + Load companies
+    // Load companies when actor is ready
     useEffect(() => {
         const init = async () => {
-            const authed = await isAuthenticated();
-            if (!authed) {
-                router.replace('/');
-                return;
-            }
             if (!actor) return;
             try {
                 setLoadingCompanies(true);
@@ -77,7 +69,7 @@ export default function page() {
             }
         };
         init();
-    }, [actor, router])
+    }, [actor])
 
     const form = useForm<generateProofCodeFormData>({
         resolver: zodResolver(generateProofCodeSchema),

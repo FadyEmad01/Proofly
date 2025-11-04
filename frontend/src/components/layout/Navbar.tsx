@@ -1,13 +1,13 @@
 "use client"
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "../ui/button";
-import { Building2, FileCheck, ShieldCheck, LogOut, User, Home, Menu, X } from "lucide-react";
+import { Building2, FileCheck, ShieldCheck, User, Home, Menu, X, CopyIcon, CheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { logout } from "@/lib/icp/auth";
-import { useRouter } from "next/navigation";
+import { useICPActor } from "@/hooks/useICPActor";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const navLinks = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -19,11 +19,70 @@ const navLinks = [
 export default function Navbar() {
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const router = useRouter();
+    const [accountName, setAccountName] = useState<string>("Account");
+    const [principal, setPrincipal] = useState<string>("");
+    const [copied, setCopied] = useState(false);
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+    const { actor, loading: connecting } = useICPActor();
 
-    const handleLogout = async () => {
-        await logout();
-        router.replace("/");
+    // Fetch account name from backend using actor
+    useEffect(() => {
+        const fetchAccountName = async () => {
+            if (!actor || connecting) {
+                return;
+            }
+
+            try {
+                // Fetch account name
+                const result = await actor.get_my_name();
+                console.log("Result:", result);
+                if (result && typeof result === 'object' && 'Ok' in result) {
+                    setAccountName(result.Ok as string);
+                    console.log("Account name:", result.Ok);
+                } else if (result && typeof result === 'object' && 'Err' in result) {
+                    console.log("Account name error:", result.Err);
+                    // If name not set or error, keep "Account" as fallback
+                    setAccountName("Account");
+                }
+            } catch (error) {
+                console.error("Failed to fetch account name:", error);
+                setAccountName("Account");
+            }
+        };
+
+        fetchAccountName();
+    }, [actor, connecting]);
+
+    // Fetch principal when popover opens
+    useEffect(() => {
+        const fetchPrincipal = async () => {
+            if (!actor || connecting || !isPopoverOpen) {
+                return;
+            }
+
+            try {
+                const principalResult = await actor.get_principal();
+                setPrincipal(principalResult || "");
+            } catch (error) {
+                console.error("Failed to fetch principal:", error);
+                setPrincipal("");
+            }
+        };
+
+        fetchPrincipal();
+    }, [actor, connecting, isPopoverOpen]);
+
+    // Handle copy principal
+    const handleCopyPrincipal = async () => {
+        if (!principal) return;
+        
+        try {
+            await navigator.clipboard.writeText(principal);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (error) {
+            console.error("Failed to copy principal:", error);
+        }
     };
 
     return (
@@ -68,27 +127,45 @@ export default function Navbar() {
                         })}
                     </div>
 
-                    {/* Right side - Profile & Logout */}
+                    {/* Right side - Profile */}
                     <div className="flex items-center gap-3">
-                        {/* Profile Button - Hidden on mobile */}
-                        <button className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
-                                <User className="w-4 h-4 text-white" />
-                            </div>
-                            <span className="hidden lg:block font-matter text-sm text-gray-700 font-medium">Account</span>
-                        </button>
+                        {/* Profile Button with Popover - Hidden on mobile */}
+                        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <button className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+                                        <User className="w-4 h-4 text-white" />
+                                    </div>
+                                    <span className="hidden lg:block font-matter text-sm text-gray-700 font-medium">{accountName}</span>
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-4" align="end">
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 mb-1">Principal ID</p>
+                                        <div className="flex items-center gap-2">
+                                            <code className="flex-1 text-xs font-mono bg-gray-50 px-2 py-1.5 rounded border break-all">
+                                                {principal || "Loading..."}
+                                            </code>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={handleCopyPrincipal}
+                                                className="shrink-0"
+                                                disabled={!principal || copied}
+                                            >
+                                                {copied ? (
+                                                    <CheckIcon className="w-4 h-4 text-green-600" />
+                                                ) : (
+                                                    <CopyIcon className="w-4 h-4" />
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                         
-                        {/* Logout Button - Hidden on mobile */}
-                        <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="hidden sm:flex gap-2 font-matter !bg-white !text-gray-700 border-2 border-gray-300 hover:!bg-red-600 hover:!text-white hover:!border-red-600 transition-all duration-200 active:scale-95"
-                            onClick={handleLogout}
-                        >
-                            <LogOut className="w-4 h-4" />
-                            <span>Logout</span>
-                        </Button>
-
                         {/* Mobile Menu Button */}
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -129,16 +206,41 @@ export default function Navbar() {
                                 );
                             })}
                             
-                            {/* Mobile Profile & Logout */}
+                            {/* Mobile Profile */}
                             <div className="flex flex-col gap-2 mt-2 pt-4 border-t">
-                                <button className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600">
-                                    <User className="w-5 h-5" />
-                                    <span className="font-matter text-sm">Account</span>
-                                </button>
-                                <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 transition-all duration-200 text-red-600">
-                                    <LogOut className="w-5 h-5" />
-                                    <span className="font-matter text-sm">Logout</span>
-                                </button>
+                                <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <button className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600">
+                                            <User className="w-5 h-5" />
+                                            <span className="font-matter text-sm">{accountName}</span>
+                                        </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[calc(100vw-3rem)] p-4" align="start">
+                                        <div className="space-y-3">
+                                            <div>
+                                                <p className="text-xs font-medium text-gray-500 mb-1">Principal ID</p>
+                                                <div className="flex items-center gap-2">
+                                                    <code className="flex-1 text-xs font-mono bg-gray-50 px-2 py-1.5 rounded border break-all">
+                                                        {principal || "Loading..."}
+                                                    </code>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={handleCopyPrincipal}
+                                                        className="shrink-0"
+                                                        disabled={!principal || copied}
+                                                    >
+                                                        {copied ? (
+                                                            <CheckIcon className="w-4 h-4 text-green-600" />
+                                                        ) : (
+                                                            <CopyIcon className="w-4 h-4" />
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                         </div>
                     </div>
@@ -147,4 +249,3 @@ export default function Navbar() {
         </nav>
     );
 }
-

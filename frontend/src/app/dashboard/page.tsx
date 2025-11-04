@@ -7,20 +7,8 @@ import { LoadingSwap } from "../../components/ui/loading-swap";
 import CrossSVG from "../../components/svg/CrossSVG";
 import { FileCheck, Building2, ShieldCheck } from "lucide-react";
 import Image from "next/image";
-import { useEffect } from "react";
-import { isAuthenticated } from "@/lib/icp/auth";
-import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
-    const router = useRouter();
-
-    useEffect(() => {
-        const guard = async () => {
-            const authed = await isAuthenticated();
-            if (!authed) router.replace("/");
-        };
-        guard();
-    }, [router]);
 
     return (
         <BorderLayout id="dashboard" className="mt-3 border-t">

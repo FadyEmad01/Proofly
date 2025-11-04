@@ -1,7 +1,6 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { idlFactory } from '@/declarations/backend';
 import { getNetworkConfig, CANISTER_ID } from './config';
-import type { Identity } from '@dfinity/agent';
 
 /**
  * Create ICP Actor for backend communication
@@ -35,16 +34,3 @@ export const createICPActor = async () => {
         throw error instanceof Error ? error : new Error(String(error));
     }
 };
-
-export const createAuthenticatedICPActor = async (identity: Identity) => {
-    const { network, host, isDevelopment } = getNetworkConfig();
-    if (!CANISTER_ID) {
-        throw new Error('Backend canister ID not configured.');
-    }
-    const agent = new HttpAgent({ host, identity });
-    if (network === 'local' || isDevelopment) {
-        await agent.fetchRootKey();
-    }
-    return Actor.createActor(idlFactory, { agent, canisterId: CANISTER_ID });
-};
-
