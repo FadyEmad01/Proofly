@@ -167,7 +167,8 @@ export default function Navbar() {
 
                     {/* Right side - Profile & Logout */}
                     <div className="flex items-center gap-3">
-                        {/* Profile Button with Popover - Hidden on mobile */}
+                        {/* Profile Button with Popover - Hidden on mobile and when not authenticated */}
+                        {isAuthenticated && (
                         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <button className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
@@ -264,8 +265,10 @@ export default function Navbar() {
                                 </div>
                             </PopoverContent>
                         </Popover>
+                        )}
                         
-                        {/* Logout Button - Hidden on mobile */}
+                        {/* Logout Button - Hidden on mobile and when not authenticated */}
+                        {isAuthenticated && (
                         <Button 
                             variant="outline" 
                             size="sm"
@@ -278,6 +281,7 @@ export default function Navbar() {
                             <LogOut className="w-4 h-4" />
                             <span>Logout</span>
                         </Button>
+                        )}
 
                         {/* Mobile Menu Button */}
                         <button
@@ -319,7 +323,8 @@ export default function Navbar() {
                                 );
                             })}
                             
-                            {/* Mobile Profile & Logout */}
+                            {/* Mobile Profile & Logout - Only show when authenticated */}
+                            {isAuthenticated && (
                             <div className="flex flex-col gap-2 mt-2 pt-4 border-t">
                                 <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                                     <PopoverTrigger asChild>
@@ -427,6 +432,7 @@ export default function Navbar() {
                                     <span className="font-matter text-sm">Logout</span>
                                 </button>
                             </div>
+                            )}
                         </div>
                     </div>
                 )}
